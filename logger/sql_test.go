@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jinzhu/now"
 	"gorm.io/gorm/logger"
@@ -46,6 +47,9 @@ func TestExplainSQL(t *testing.T) {
 		esVal  = []byte(`{"Name":"test","Val":"test"}`)
 		es     = ExampleStruct{Name: "test", Val: "test"}
 	)
+
+	pst, _ := time.LoadLocation("America/Los_Angeles")
+	est, _ := time.LoadLocation("America/New_York")
 
 	results := []struct {
 		SQL           string
@@ -94,6 +98,18 @@ func TestExplainSQL(t *testing.T) {
 			NumericRegexp: nil,
 			Vars:          []interface{}{"jinzhu", 1, 999.99, true, []byte("12345"), tt, &tt, nil, "w@g.\"com", myrole, pwd, &js, &es},
 			Result:        fmt.Sprintf(`create table users (name, age, height, actived, bytes, create_at, update_at, deleted_at, email, role, pass, json_struct, example_struct) values ("jinzhu", 1, 999.990000, true, "12345", "2020-02-23 11:10:10", "2020-02-23 11:10:10", NULL, "w@g.\"com", "admin", "pass", %v, %v)`, format(jsVal, `"`), format(esVal, `"`)),
+		},
+		{
+			SQL:           "create table users (name, age, height, actived, bytes, create_at, update_at, deleted_at, email, role, pass) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			NumericRegexp: nil,
+			Vars:          []interface{}{"jinzhu?", 1, 999.99, true, []byte("12345"), tt.In(pst), &tt, nil, "w@g.\"com", myrole, pwd},
+			Result:        `create table users (name, age, height, actived, bytes, create_at, update_at, deleted_at, email, role, pass) values ("jinzhu?", 1, 999.990000, true, "12345", "2020-02-23 11:10:10", "2020-02-23 11:10:10", NULL, "w@g.\"com", "admin", "pass")`,
+		},
+		{
+			SQL:           "create table users (name, age, height, actived, bytes, create_at, update_at, deleted_at, email, role, pass) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			NumericRegexp: nil,
+			Vars:          []interface{}{"jinzhu?", 1, 999.99, true, []byte("12345"), tt.In(est), &tt, nil, "w@g.\"com", myrole, pwd},
+			Result:        `create table users (name, age, height, actived, bytes, create_at, update_at, deleted_at, email, role, pass) values ("jinzhu?", 1, 999.990000, true, "12345", "2020-02-23 11:10:10", "2020-02-23 11:10:10", NULL, "w@g.\"com", "admin", "pass")`,
 		},
 	}
 
